@@ -18,28 +18,24 @@ library(tidycensus)
 ```
 
 # Loading Emergency Visit Data
-For this analysis, we will use a log of the number of different visits in each zip codes in New York from the source, cityofnewyork.us. The cityofnewyork.us is a reliable source for public datasets. Datasets from this source are managed and maintained by data coordinators. Thus, this makes our analysis more accurate and actionable.    
+For this analysis, we will use a dataset containing a log of the number of different visits in each zip codes in New York. The dataset will be obtained from the "cityofnewyork.us". The cityofnewyork.us is a reliable source for public datasets. Datasets from this source are managed and maintained by data coordinators. Thus, this makes our data more accurate.    
 ```{r}
 emergencyVisit =
   fromJSON("https://data.cityofnewyork.us/resource/2nwg-uqyg.json?$limit=3000")
 ```
 
 # Cleaning the Data
-####Convert "date" to date format
-After importing the dataset, we find that the datatypes of the columns are all *char*. In the code below, we convert all the columns to their appropriate datatypes, allowing us to aggregate the dataset later.
+#### Convert "date" to date format
+After importing the dataset, we find that the data types of the columns imported as *char*. We will convert the columns to their appropriate data types. This allows us to aggregate the dataset later.
 ```{r}
 emergencyVisit$date = as.Date(emergencyVisit$extract_date)
 emergencyVisit$extract_date = as.Date(emergencyVisit$extract_date)
-```
 
-####Convert "ed visits" to integer format
-We want to convert total_ed_visits to integer so we can aggregate the dataset. 
-```{r}
 emergencyVisit$total_ed_visits = strtoi(emergencyVisit$total_ed_visits)
 ```
 
-####Filtering to last 300 Days, or 10 months
-For our analysis, we only want to analyze the recent emergency visits. This will make our analysis more timely. We save the new dataset into a new dataframe called, "recentVisit". 
+#### Filtering to recent 300 records
+For our analysis, we only analyze a small portion of the data. We save the new dataset into a new dataframe called, "recentVisit". 
 ```{r}
 recentVisit <- emergencyVisit %>% 
   arrange(desc(date)) %>% 
@@ -48,29 +44,29 @@ recentVisit <- emergencyVisit %>%
 
 # Data Exploration
 #### Calculate the number of visits per ZIP code
-After cleaning the dataset, we aggregated the dataset by the number of visits received in each neighborhood. We find that the neighborhood with the most amount of visits is 10456. 
+After cleaning the dataset, we aggregated the dataset using the max function on the number of visits received in each neighborhood. We find that the neighborhood with the most amount of visits is 10456. 
 ```{r}
 recentVisit %>% 
   group_by(mod_zcta) %>% 
-  summarize(totalVisit=sum(total_ed_visits)) %>% 
+  summarize(totalVisit=max(total_ed_visits)) %>% 
   arrange(desc(totalVisit))
 ```
 
 # PART 2
-#### Getting Geolocation
-In this part, we import geolocation dataset of New York into the environment. The geo_location dataset will aid us to create a visualation of our findings and explain our findings to stakeholders. 
+#### Getting Geolocation Data
+In this part, we import a geolocation dataset. We will use the geolocation dataset to visualize our findings to our stakeholders. This will make it easy for our stakeholders to understand our analysis. 
 ```{r}
 nycMap = st_read("/Users/ls/Documents/cis 9750/Assignment 3/ZIP_CODE_040114/ZIP_CODE_040114.shp")
 ```
 
 #### Graph a map outlining the ZIP codes of NYC. 
-The code below tests the geolocation dataset and check if it has imported the correctly.
+The following code maps the borders to the map we will use. We can confirm that this map is correct by confirming that it is identical to New York's borders. 
 ```{r}
 plot(st_geometry(nycMap))
 ```
 
 #### Merge recentVisit and geolocation datasets
-Next, we merge the two datasets together and create a map, color coding by the number of total_ed_visits. 
+We merge the datasets together using the merge function. 
 ```{r}
 nycMapGeo <- nycMap %>% 
   mutate(mod_zcta=as.character(ZIPCODE)) %>% 
@@ -79,7 +75,7 @@ nycMapGeo <- nycMap %>%
 geo_visit = merge(x=nycMapGeo, y=recentVisit, by='mod_zcta', all=TRUE)
 ```
 
-#### Map the number of visits in each ZIP code
+#### Shade the map based on the number of visits in each ZIP code
 The brighter colored zip codes indicates higher numbers of emergency visit and the darker, more blue, colored zip codes indicate lower total number of emergency visits. In the map below, we can see that areas in Brooklyn and Manhattan are more brightly lit than other areas. This means that these areas have the most amount of emergency visits in New York. However, using this metric alone to base our analysis is dangerous. We would need to dive deeper to see the entire picture. 
 ```{r}
 total_visits <- geo_visit %>% 
@@ -133,7 +129,7 @@ summary(geo_visit)
 
 # Part 4
 #### Download Poverty Data
-Next, we test the hypothesis of poverty on the total number of ed visits. It would seem likely to assume that the higher the poverty rate in an area, the higher the number of ed visits for the area would be. 
+Next, we test the hypothesis of poverty on the total number of ed visits. It seems likely that the higher the poverty rate, the higher the number of ED visits would be. 
 ```{r}
 vars = c(poverty = 'B17001_002')
 
@@ -167,9 +163,9 @@ geo_visit <- geo_visit %>%
 ```
 
 #### Analyze the linear relationship between poverty rate and the number of visits, across ZIP codes.
-In the graph below, we can see that there is a positive relationship between poverty rate and the total ED visits across all zip codes. As poverty rate rises, the total number of emergency visits are also higher. This is not to say that higher poverty levels causes more ED visits but just to state an observation found between poverty rate and total ED visits. Nevertheless, we can expect that zip codes with higher level of poverty levels tend to also have higher number of emergency visits per day.
+In the graph below, we can see that our hypothesis is correct. There is a positive relationship between poverty rate and the total number of ED visits. As poverty rate rises, the total number of emergency visits are also higher. This is not to say that higher poverty levels causes more ED visits but just to state that higher poverty rate tends to also have higher ED visits.
 
-However, another observation of the relationship between the number of ED visits and the poverty rate is that as the poverty rate increase, the number of ED visits become more and more spread out. It becomes more and more uncertain that whether ZIP codes with higher poverty rate will have higher number of ED visits or lower number of ED visits. This might be due to other factors being that ZIP codes with higher poverty rate can't afford to visit the doctor as often as they would like. 
+However, another observation of the relationship between the number of ED visits and the poverty rate is that as the poverty rate increases, the spread of the total number of ED visits become greater. It becomes more and more uncertain whether a ZIP code with higher poverty rate will have high number of ED visits or lower number of ED visits. This may be due to other factors such as patients in particular areas are more resistant to the emergency department or cost-saving initiatives  incorporated by patients. The exact reason requires more data. 
 ```{r}
 ggplot(data=geo_visit, aes(x=poverty_rate, y=total_ed_visits)) +
   geom_point() +
@@ -178,9 +174,7 @@ ggplot(data=geo_visit, aes(x=poverty_rate, y=total_ed_visits)) +
 ```
 
 #### Analyze the statistical significance of the regression.
-We see in the summary of poverty_visit that the model we have produced is statistically significant from the low p-value corresponding to the model and the factor, poverty_rate. Despite having a low R-squared value of only .4312 for this model, we can still use this model to give us a general idea of the relationship between poverty rate and the number of ED visits across ZIP codes. 
-
-In other words, we may not be able to use this model to precisely predict the total ED visits given a certain poverty level of a particular zip code, but we can definitely tell from the extremely low p-value of poverty rate that poverty rate is a significant factor corresponding to the number of ED visits across ZIP code. 
+According to the model that we produced, poverty rate is a significant factor in determining the number of ED visits. Despite the regression having a low R-squared value of only .4312, this model gives us a general idea of the impact poverty rate may have on the number of ED visits. For instance, if poverty rate increases by 1 percent, the number of ED visits would also increase between 2.8 to 3.2 more visits. 
 ```{r}
 poverty_visit = lm(total_ed_visits~poverty_rate, data=geo_visit)
 
@@ -188,7 +182,9 @@ summary(poverty_visit)
 ```
 
 #### Analyze the linear relationship between poverty rate and the rate of visits per inhabitants, across ZIP codes.
-Like the relationship between poverty rate and the number of ED visits across ZIP codes, there is a similar relationship between poverty rate and the rate of ED visits. As the poverty rate increases, we also see an increase in the rate of ED visits. In other words, ZIP codes with higher level of poverty rate usually have higher rate of ED visits. Similar to the previous model, the model has wider spread at greater poverty rates.
+Like the previous model, there is a similar relationship between poverty rate and the rate of ED visits. As the poverty rate increases, the rate of ED visits would also increase. In other words, ZIP codes with higher level of poverty rate are expected to also have higher rate of ED visits. 
+
+Lastly, the model also has wider spread. Locations with higher poverty rates have a wider range of ED rates. 
 ```{r}
 ggplot(data=geo_visit, aes(x=poverty_rate, y=rate_ed_visit)) +
   geom_point() +
@@ -197,7 +193,7 @@ ggplot(data=geo_visit, aes(x=poverty_rate, y=rate_ed_visit)) +
 ```
 
 #### Analyze the statistical significance of the linear regression. 
-In this new model between the relationship of the poverty rate and rate of ED visits, there is also statistical significance between the two variables. This means that there is enough evidence to say that the poverty rate of a ZIP code is significant in determining the rate of ed visits. However, just like the previous model, it is just as unreliable to predict the precise rate of ED visits using just the poverty rate.
+Analyzing the model, we see that the variables are statistically significant. This means that there is enough evidence to say that the poverty rate is significant in determining the rate of ed visits. However, just like the previous model, it is just as unreliable to predict the precise rate of ED visits using just the poverty rate. We can only get the idea that higher poverty rate tend to have higher ED rates. 
 ```{r}
 poverty_visit_rate <- lm(rate_ed_visit~poverty_rate, data=geo_visit)
 
@@ -227,9 +223,9 @@ geo_visit = merge(x=geo_visit, y=ageData, by="mod_zcta")
 ```
 
 #### Analyze the relationship between age and ED visits
-We can see from the graph below that age and ED visits have a negative relationship with each other. This is to say that as age increases, the number of ED visits decreases. This is rather surprising as one would typically expect that as a person ages, they would have more visits to the hospital. Perhaps this is because that as a person ages, they are less likely to perform or engage in risky activities that would send them to the emergency room. However, this explanation requires more evidence and deeper analysis. 
+We can see from the graph below that age and ED visits are negatively correlated. This is to say that as age increases, the number of ED visits decreases. This is rather surprising as one would typically expect that as a person ages, patients would have more visits to the hospital. Perhaps, older individuals are less likely to engage in risky activities that would send them to the emergency department than younger people. 
 
-Furthermore, we can see that as age increases, the spread between the total ED visits decreases. In other words, as age increases, the number of ED visits a location has becomes predictable. In fact, as age increases, the number of ed visits approaches zero. 
+On the other hand, as age increases, the number of ED visits a location has becomes more predictable. In fact, as age increases, the number of ed visits approaches zero. 
 ```{r}
 age_visit_model <- lm(total_ed_visits~age, data=geo_visit)
 
