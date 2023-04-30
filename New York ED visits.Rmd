@@ -1,12 +1,11 @@
 ---
 title: "NYC Emergency Medical Visits"
 author: "Louie Sui"
-date: "2022-11-02"
 output: pdf_document
 ---
 
 # Import Libraries
-These are the packages that we will use in our analysis. All of which contains the necessary functions we will use. 
+These are the packages that we will use in our analysis.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 library(rvest)
 library(sf)
@@ -16,7 +15,7 @@ library(tidycensus)
 ```
 
 # Loading Emergency Visit Data
-For this analysis, we will use a dataset containing a log of the number of different visits in each zip codes in New York. The dataset will be obtained from the "cityofnewyork.us". The cityofnewyork.us is a reliable source for public datasets. Datasets from this source are managed and maintained by data coordinators. Thus, this makes our data more accurate.    
+The dataset contains the number of different visits in each zip codes of New York. The dataset is from "cityofnewyork.us". The cityofnewyork.us is a reliable source for public datasets. Datasets from this source are managed and maintained by data coordinators. Thus, this makes our data more accurate.    
 ```{r}
 emergencyVisit =
   fromJSON("https://data.cityofnewyork.us/resource/2nwg-uqyg.json?$limit=3000")
