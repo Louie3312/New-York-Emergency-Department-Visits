@@ -5,8 +5,6 @@ date: "2022-11-02"
 output: pdf_document
 ---
 
-(The dataset is a log of the number of emergency department visit. Each record captures the number of emergency visits in a given time frame.)
-
 # Import Libraries
 These are the packages that we will use in our analysis. All of which contains the necessary functions we will use. 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
